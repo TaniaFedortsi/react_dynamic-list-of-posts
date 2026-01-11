@@ -12,14 +12,20 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
   selectedUserId,
   onSelectUser,
 }) => {
+  const [error, setError] = useState<string | null>(null);
   const [isActive, setIsActive] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    getUsers().then(fetchedUsers => {
-      setUsers(fetchedUsers);
-    });
+    getUsers()
+      .then(fetchedUsers => {
+        setUsers(fetchedUsers);
+        setError(null);
+      })
+      .catch(() => {
+        setError('Failed to load users. Please try again.');
+      });
   }, []);
 
   useEffect(() => {
@@ -80,6 +86,11 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
 
       <div className="dropdown-menu" id="dropdown-menu" role="menu">
         <div className="dropdown-content">
+          {error && (
+            <p className="has-text-danger" data-cy="UsersLoadingError">
+              {error}
+            </p>
+          )}
           {users.map(user => (
             <a
               key={user.id}

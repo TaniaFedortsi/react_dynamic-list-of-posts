@@ -24,39 +24,58 @@ export const NewCommentForm: React.FC<NewCommentProps> = ({
     submit: null,
   });
 
-  const showErrorMessage = (field: keyof Errors, message: string) => {
-    setErrors(prev => ({ ...prev, [field]: message }));
-  };
+  const handleInputChange = (field: keyof Errors, value: string) => {
+    switch (field) {
+      case 'name':
+        setAuthorName(value);
+        break;
+      case 'email':
+        setAuthorEmail(value);
+        break;
+      case 'body':
+        setCommentBody(value);
+        break;
+    }
 
-  const clearError = (field: keyof Errors) => {
-    setErrors(prev => ({ ...prev, [field]: null }));
+    setErrors(prev => ({
+      ...prev,
+      [field]: prev[field] && value.trim() ? null : prev[field],
+    }));
   };
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
 
-    setErrors({ name: null, email: null, body: null, submit: null });
-
+    const newErrors: Errors = {
+      name: null,
+      email: null,
+      body: null,
+      submit: null,
+    };
     let hasError = false;
 
     if (!authorName.trim()) {
-      showErrorMessage('name', 'Name is required');
+      newErrors.name = 'Name is required';
       hasError = true;
     }
 
     if (!authorEmail.trim()) {
-      showErrorMessage('email', 'Email is required');
+      newErrors.email = 'Email is required';
       hasError = true;
     }
 
     if (!commentBody.trim()) {
-      showErrorMessage('body', 'Enter some text');
+      newErrors.body = 'Enter some text';
       hasError = true;
     }
 
     if (hasError) {
+      setErrors(newErrors);
+
       return;
     }
+
+    setLoading(true);
 
     const newComment: CommentData & { postId: number } = {
       name: authorName,
@@ -65,15 +84,16 @@ export const NewCommentForm: React.FC<NewCommentProps> = ({
       postId,
     };
 
-    setLoading(true);
-
     createComment(newComment)
       .then(createdComment => {
         addNewComment(createdComment);
         setCommentBody('');
       })
       .catch(() => {
-        showErrorMessage('submit', 'Something went wrong. Try again.');
+        setErrors(prev => ({
+          ...prev,
+          submit: 'Something went wrong. Try again.',
+        }));
       })
       .finally(() => {
         setLoading(false);
@@ -102,13 +122,7 @@ export const NewCommentForm: React.FC<NewCommentProps> = ({
             id="comment-author-name"
             placeholder="Name Surname"
             className={classNames('input', { ' is-danger': errors.name })}
-            onChange={event => {
-              setAuthorName(event.target.value);
-
-              if (errors.name && event.target.value.trim()) {
-                clearError('name');
-              }
-            }}
+            onChange={e => handleInputChange('name', e.target.value)}
           />
 
           <span className="icon is-small is-left">
@@ -144,13 +158,7 @@ export const NewCommentForm: React.FC<NewCommentProps> = ({
             id="comment-author-email"
             placeholder="email@test.com"
             className={classNames('input', { ' is-danger': errors.email })}
-            onChange={event => {
-              setAuthorEmail(event.target.value);
-
-              if (errors.email && event.target.value.trim()) {
-                clearError('email');
-              }
-            }}
+            onChange={e => handleInputChange('email', e.target.value)}
           />
 
           <span className="icon is-small is-left">
@@ -185,13 +193,7 @@ export const NewCommentForm: React.FC<NewCommentProps> = ({
             value={commentBody}
             placeholder="Type comment here"
             className={classNames('textarea', { ' is-danger': errors.body })}
-            onChange={event => {
-              setCommentBody(event.target.value);
-
-              if (errors.body && event.target.value.trim()) {
-                clearError('body');
-              }
-            }}
+            onChange={e => handleInputChange('body', e.target.value)}
           />
         </div>
 

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useReducer, useState } from 'react';
+import { appReducer } from './reducer/appReducer';
 import classNames from 'classnames';
 
 import 'bulma/css/bulma.css';
@@ -11,32 +12,27 @@ import { PostsList } from './components/PostsList';
 import { PostDetails } from './components/PostDetails';
 import { UserSelector } from './components/UserSelector';
 import { Loader } from './components/Loader';
-import { Post } from './types/Post';
 import { Comment } from './types/Comment';
-import { Notification } from './types/Notification';
+import { initialState } from './reducer/initialState';
 
 export const App = () => {
-  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
-  const [posts, setPosts] = useState<Post[]>([]);
   const [isPostsLoading, setIsPostsLoading] = useState(false);
   const [isCommentsLoading, setIsCommentsLoading] = useState(false);
-  const [postsNotification, setPostsNotification] =
-    useState<Notification>(null);
-  const [commentsNotification, setCommentsNotification] =
-    useState<Notification>(null);
-  const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
-  const [comments, setComments] = useState<Comment[]>([]);
+  const [state, dispatch] = useReducer(appReducer, initialState);
+
+  const {
+    selectedUserId,
+    posts,
+    selectedPostId,
+    postsNotification,
+    comments,
+    commentsNotification,
+  } = state;
 
   const selectedPost = posts.find(post => post.id === selectedPostId);
 
   const handleSelectUser = (userId: number) => {
-    setSelectedUserId(userId);
-
-    setPosts([]);
-    setSelectedPostId(null);
-    setPostsNotification(null);
-    setComments([]);
-    setCommentsNotification(null);
+    dispatch({ type: 'SELECT_USER', userId });
   };
 
   useEffect(() => {
@@ -46,21 +42,15 @@ export const App = () => {
 
     setIsPostsLoading(true);
 
-    getPosts(selectedUserId!)
+    getPosts(selectedUserId)
       .then(fetchedPosts => {
-        setPosts(fetchedPosts);
-
-        setPostsNotification(
-          fetchedPosts.length === 0
-            ? { type: 'warning', message: 'No posts yet' }
-            : null,
-        );
+        dispatch({
+          type: 'SET_POSTS_SUCCESS',
+          posts: fetchedPosts,
+        });
       })
       .catch(() => {
-        setPostsNotification({
-          type: 'error',
-          message: 'Something went wrong!',
-        });
+        dispatch({ type: 'SET_POSTS_ERROR' });
       })
       .finally(() => {
         setIsPostsLoading(false);
@@ -69,8 +59,11 @@ export const App = () => {
 
   useEffect(() => {
     if (!selectedPostId) {
-      setComments([]);
-      setCommentsNotification(null);
+      dispatch({
+        type: 'SET_COMMENTS_SUCCESS',
+        comments: [],
+      });
+
       setIsCommentsLoading(false);
 
       return;
@@ -80,22 +73,13 @@ export const App = () => {
 
     getComments(selectedPostId)
       .then(fetchedComments => {
-        setComments(fetchedComments);
-
-        if (fetchedComments.length === 0) {
-          setCommentsNotification({
-            type: 'warning',
-            message: 'No comments yet',
-          });
-        } else {
-          setCommentsNotification(null);
-        }
+        dispatch({
+          type: 'SET_COMMENTS_SUCCESS',
+          comments: fetchedComments,
+        });
       })
       .catch(() => {
-        setCommentsNotification({
-          type: 'error',
-          message: 'Something went wrong',
-        });
+        dispatch({ type: 'SET_COMMENTS_ERROR' });
       })
       .finally(() => {
         setIsCommentsLoading(false);
@@ -103,20 +87,36 @@ export const App = () => {
   }, [selectedPostId]);
 
   const addNewComment = (newComment: Comment) => {
-    setComments(prev => [...prev, newComment]);
+    dispatch({ type: 'ADD_COMMENT', comment: newComment });
   };
 
   const deleteComment = (commentId: number) => {
-    setComments(prev => prev.filter(comment => comment.id !== commentId));
-    removeComment(commentId);
+    const commentToDelete = comments.find(c => c.id === commentId);
+
+    if (!commentToDelete) {
+      return;
+    }
+
+    dispatch({ type: 'DELETE_COMMENT', commentId });
+
+    removeComment(commentId).catch(() => {
+      dispatch({ type: 'ADD_COMMENT', comment: commentToDelete });
+      dispatch({ type: 'SET_COMMENTS_ERROR' });
+    });
   };
 
   const showComments = (postId: number) => {
-    setSelectedPostId(prev => (prev === postId ? null : postId));
+    dispatch({
+      type: 'SET_SELECTED_POST',
+      postId: selectedPostId === postId ? null : postId,
+    });
   };
 
   const closeComments = () => {
-    setSelectedPostId(null);
+    dispatch({
+      type: 'SET_SELECTED_POST',
+      postId: null,
+    });
   };
 
   return (
