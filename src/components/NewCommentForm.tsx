@@ -224,6 +224,11 @@ export const NewCommentForm: React.FC<NewCommentProps> = ({
           </button>
         </div>
       </div>
+      {errors.submit && (
+        <p className="help is-danger" data-cy="SubmitError">
+          {errors.submit}
+        </p>
+      )}
     </form>
   );
 };
